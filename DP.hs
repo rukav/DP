@@ -9,15 +9,13 @@ M[i] = max (elem i) (M[i-1] + elem i)
 M[0] = elem 0
 --}
 
-maxsum :: Array Int Int -> Int
-maxsum arr = maximum $ elems table
-  where table = array (0, h-l) [(i,f i) | i <- [0..(h-l)]] 
-        (l,h) = bounds arr
+maxsum' :: [Int] -> Int
+maxsum' xs = maximum $ elems table
+  where table = array (0, len) [(i,f i) | i <- [0..len]] 
         f i = if i == 0 then 0
-               else max (arr ! (i-1+l)) (table ! (i-1) + arr ! (i-1+l)) 
-
-testarr = [31,-41,59,26,-53,58,97,-93,-23,84] :: [Int]
-a = listArray (0, length testarr-1) testarr
+               else max (arr ! i) (table ! (i-1) + arr ! i) 
+        len = length xs
+        arr = listArray (1, len) xs
         
 
 {-- Making Change. 
@@ -26,6 +24,7 @@ You are given n types of coin denominations of values v(1) < v(2) < ... < v(n)
 Give an algorithm which makes change for an amount of money C with as few coins as possible.
 
 Mj - minimum number of coins required to make change for amount of money j
+M0 = 0
 Mj = min {M(j-vi} + 1 for all i < j 
 --}
 
@@ -35,15 +34,6 @@ change' coins amount = table ! amount
         f i = if i == 0 then 0
                else minimum [ table ! (i-k) + 1 | k <- coins, k <= i ]
 
-change :: [Int] -> Int -> [Int]
-change coins amount = values table amount 
-  where table = array (0,amount) [ (i, f i) | i <- [0..amount]]
-        f i = if i == 0 then (0,0)
-               else minimum [ (fst (table ! (i-k)) + 1,k) | k <- coins, k <= i ]
-        values t 0 = []
-        values t n = let v = snd (t ! n) in v:values t (n-v)
-
-
 {-- Longest Increasing Subsequence. 
 Given a sequence of n real numbers A(1) ... A(n), determine a subsequence (not necessarily contiguous) 
 of maximum length in which the values in the subsequence form a strictly increasing sequence.
@@ -52,28 +42,15 @@ of maximum length in which the values in the subsequence form a strictly increas
 Mj = 1 + max (Mi) forall i < j and elem [j] > elem [i] 
 --}
 
-lsub' :: Array Int Int -> Int
-lsub' arr = maximum $ elems table
-  where table = array (0,h-l) [(i, f i) | i <- [0..h-l]]
+lsub' :: [Int] -> Int
+lsub' xs = maximum $ elems table
+  where table = array (0,len-1) [(i, f i) | i <- [0..len-1]]
         f i = if i == 0 then 1
                else let ts = [table ! k | k <- [0..i-1], arr ! i > arr ! k]
                     in if null ts then 1 else 1 + maximum ts
-        (l,h) = bounds arr
+        len = length xs
+        arr = listArray (0, len-1) xs
 
-lsub :: Array Int Int -> [(Int,Int)]
-lsub arr = elems table
-  where table = array (0,h-l) [(i, f i) | i <- [0..h-l]]
-        f i = if i == 0 then (1,-1)
-               else let ts = [(fst (table ! k), k) | k <- [0..i-1], arr ! i > arr ! k]
-                    in if null ts then (1,-1) else let (l,p) = maximum ts in (1 + l, p)
-        (l,h) = bounds arr
-
-
-t0 = [9,5,2,8,7,3,1,6,4] :: [Int]
-a0 = listArray (0,length t0 - 1) t0
-
-t1 = [5,1,2,8,6,3,4,6,7,9,7,10] :: [Int]
-a1 = listArray (0,length t1 - 1) t1
 
 {-- Knapsack problem (duplicate allows and duplicate forbidden) 
 Given items of different values and volumes, find the most valuable set of items that fit in a 
@@ -91,16 +68,6 @@ knapsack' xs size = table ! size
         f i = if i == 0 then 0
                else maximum $ [table ! (i - vol) + val | (vol,val) <- xs, vol <= i] ++ [0]
 
-knapsack :: [(Int,Int)] -> Int -> (Int, [Int])
-knapsack xs size = table ! size
-  where table = array (0, size) [(i, f i) |  i <- [0..size]]
-        f i = if i == 0 then (0,[])
-               else maximum $ [let (v,c) = table ! (i - vol) in (v + val, c ++ [vol]) 
-                                | (vol,val) <- xs, vol <= i] ++ [(0,[])]
-        
-it = [(6,30), (3,14), (4,16), (2,9)] :: [(Int,Int)]
-
-
 {--
 duplicates forbidden
 M(i,j) - optimal value for filling exactly a capacity j knapsack with some subset of item 1..i,
@@ -110,19 +77,17 @@ M(i,j) = max {M(i-1,j), M(i-1,j-volume(i)) + value (i)}
         M(i-1,j-volume(i)) + value (i) - i-th item used 
 --}
 
-
-knapsack2 :: Array Int (Int,Int) -> Int -> Int
-knapsack2 items capacity = table ! (n,capacity)
+knapsack2' :: [(Int,Int)] -> Int -> Int
+knapsack2' is capacity = table ! (len,capacity)
   where (l,h) = bounds items
-        n = h-l+1
-        table = array ((0,0),(n,capacity)) [((i,j), f i j) | i <- [0..n], j <- [0..capacity]]
+        table = array ((0,0),(len, capacity)) [((i,j), f i j) | i <- [0..len], j <- [0..capacity]]
         f i j = if i == 0 || j == 0 then 0
                  else if vol i > j then table ! (i-1,j)
                        else max (table ! (i-1,j)) (table ! (i-1, j - vol i) + val i)
         vol i = fst $ items ! (i-1+l)
-        val i = snd $ items ! (i-1+l) 
--- it, cap = 10, answer 46   
-ita = listArray (0,length it - 1) it   
+        val i = snd $ items ! (i-1+l)
+        len = length is
+        items = listArray (0,len - 1) is 
 
 {-- Edit Distance. 
 Given two text strings A of length n and B of length m, you want to transform A into B with a 
